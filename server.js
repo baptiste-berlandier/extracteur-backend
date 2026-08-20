@@ -169,12 +169,14 @@ app.post("/api/create-checkout-session", async (req, res) => {
       success_url: process.env.SUCCESS_URL,
       cancel_url: process.env.CANCEL_URL,
          branding_settings: {
-     display_name: "Extracteur de Données",
-     icon: {
-       type: "file",
-       file: "file_1U6WuuRtznai6KcvyaIs1Re6",
-     },
-   },
+        display_name: "Extracteur de Données",
+        icon: {
+          type: "file",
+          file: "file_1U6WuuRtznai6KcvyaIs1Re6",
+        },
+        background_color: "#6366f1",
+        button_color: "#6366f1",
+      },
     });
     res.json({ url: session.url });
   } catch (err) {
@@ -187,21 +189,7 @@ app.get("/", (req, res) => {
   res.send("Serveur Extracteur de Données — OK");
 });
 
-app.get("/admin/setup-branding-icon", async (req, res) => {
-  try {
-    const iconBase64 =
-      "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACaklEQVR4nO3cW07CUBRA0bbxWwapwTFJZJA4AfwwkAJ93D7vY+/1raXJ2T2lRKyrDXwcL9ctjkt3Ph3qtY+5ygEdeBxrBLHoAA4+DUtCmPWLDj5Nc0KY9AsOPg9TQmhCf9Dh52PKrIICcPj5CZ3ZaAAOP18hsxsMwOHnb2yGvQE4/HIMzbIzAIdfnr6ZvgTg8MvVNdvgx0CV6SEAr/7yPc/YDQB3D8Crn6M9azcAXFNVXv1Et5m7AeAMAM4A4Grv/2xuADgDgDMAuLc9XuTn+32PlynS59fvpsd3A8AZAJwBwBkAnAHAGQCcAcDt8jnAmK2fdbv0fTax97nE/ozEDQBnAHAGAGcAcAYAZwBwBgBnAHAGAGcAcAYAZwBwBgBnAHAGAGcAcAYAZwBwBgBnAHAGAGcAcAYAZwBwBgBnAHAGAGcAcEl8OTT2FyTbUjqXPbgB4AwAzgDgDADOAOCSeArwX8TE4waAMwA4A4AzADgDgDMAOAOAMwA4A4AzADgDgDMAOAOAMwA4A4AzADgDgDMAOAOAMwA4A4AzADgDgDMAOAOAMwA4A4BL4ruBsb8f15bSuezBDQBnAHAGAGcAcAYAZwBwBgBXfxwv19gnoXjcAHAGANecT4c69kkojvPpULsB4AwAzgDgmqr6vxfEPhHt6zZzNwDcPQC3AEd71m4AuIcA3ALle56xGwDuJQC3QLm6Ztu5AYygPH0z7b0FGEE5hmY5+B7ACPI3NsPRN4FGkK+Q2QU9BRhBfkJnFvwYaAT5mDKrWUP17wjTNOciXXRVG0IalmznVda6IcSxxm15k/u6QWxji/dhfzWXkQw9afjaAAAAAElFTkSuQmCC";
 
-    const buffer = Buffer.from(iconBase64, "base64");
-
-    const file = await stripe.files.create({
-      purpose: "business_icon",
-      file: {
-        data: buffer,
-        name: "icon.png",
-        type: "application/octet-stream",
-      },
-    });
 
     res.send(`Fichier uploadé avec succès. ID : ${file.id}`);
   } catch (err) {
