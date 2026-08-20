@@ -168,9 +168,13 @@ app.post("/api/create-checkout-session", async (req, res) => {
       client_reference_id: deviceId,
       success_url: process.env.SUCCESS_URL,
       cancel_url: process.env.CANCEL_URL,
-      branding_settings: {
-        display_name: "Extracteur de Données",
-      },
+         branding_settings: {
+     display_name: "Extracteur de Données",
+     icon: {
+       type: "file",
+       file: "file_1U6WuuRtznai6KcvyaIs1Re6",
+     },
+   },
     });
     res.json({ url: session.url });
   } catch (err) {
