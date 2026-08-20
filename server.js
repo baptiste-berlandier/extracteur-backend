@@ -191,11 +191,11 @@ app.get("/", (req, res) => {
 
 
 
-    res.send(`Fichier uploadé avec succès. ID : ${file.id}`);
-  } catch (err) {
-    res.status(500).send("Erreur : " + err.message);
-  }
+ app.get("/", (req, res) => {
+  res.send("Serveur Extracteur de Données — OK");
 });
+
+app.get("/merci", (req, res) => {
 
 app.get("/merci", (req, res) => {
   res.send(`<!DOCTYPE html>
