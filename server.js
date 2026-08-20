@@ -168,7 +168,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       client_reference_id: deviceId,
       success_url: process.env.SUCCESS_URL,
       cancel_url: process.env.CANCEL_URL,
-         branding_settings: {
+      branding_settings: {
         display_name: "Extracteur de Données",
         icon: {
           type: "file",
@@ -188,14 +188,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("Serveur Extracteur de Données — OK");
 });
-
-
-
- app.get("/", (req, res) => {
-  res.send("Serveur Extracteur de Données — OK");
-});
-
-app.get("/merci", (req, res) => {
 
 app.get("/merci", (req, res) => {
   res.send(`<!DOCTYPE html>
