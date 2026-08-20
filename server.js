@@ -111,4 +111,77 @@ app.post("/api/extract", async (req, res) => {
     });
   }
 
-  const
+  const systemPrompt = `Tu es un extracteur de données. On te donne le texte brut d'une page web et une demande de l'utilisateur.
+Réponds UNIQUEMENT avec un tableau JSON de tableaux (lignes), où la première ligne contient les en-têtes de colonnes.
+Ne mets aucun texte avant ou après, aucun bloc markdown, uniquement le JSON brut.
+Si aucune donnée pertinente n'est trouvée, réponds avec [["Résultat"],["Aucune donnée trouvée"]].`;
+
+  const userMessage = `Demande de l'utilisateur : ${query}\n\nContenu de la page :\n${pageText.slice(0, 15000)}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Erreur API Claude (${response.status}) : ${errText.slice(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const textBlock = (data.content || []).find((b) => b.type === "text");
+    if (!textBlock) throw new Error("Réponse vide de l'API.");
+
+    const cleaned = textBlock.text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const rows = JSON.parse(cleaned);
+
+    if (!user.subscribed) {
+      updateUser(deviceId, { usedCount: user.usedCount + 1 });
+    }
+
+    res.json({ rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "extraction_failed", message: err.message });
+  }
+});
+
+app.post("/api/create-checkout-session", async (req, res) => {
+  const { deviceId } = req.body || {};
+  if (!deviceId) return res.status(400).json({ error: "deviceId manquant" });
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      client_reference_id: deviceId,
+      success_url: process.env.SUCCESS_URL,
+      cancel_url: process.env.CANCEL_URL,
+      branding_settings: {
+        display_name: "Extracteur de Données",
+      },
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "checkout_failed", message: err.message });
+  }
+});
+
+app.get("/", (req, res) => {
+  res.send("Serveur Extracteur de Données — OK");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
