@@ -183,5 +183,53 @@ app.get("/", (req, res) => {
   res.send("Serveur Extracteur de Données — OK");
 });
 
+app.get("/merci", (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Abonnement activé — Extracteur de Données</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #fafafa; color: #1a1a1a; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+  .card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 420px; }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  p { color: #555; font-size: 14px; line-height: 1.6; }
+  .check { font-size: 48px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="check">✅</div>
+    <h1>Abonnement activé !</h1>
+    <p>Merci pour votre confiance. Vous pouvez fermer cet onglet et retourner sur l'extension Chrome
+    "Extracteur de Données" — vos extractions IA sont maintenant illimitées.</p>
+  </div>
+</body>
+</html>`);
+});
+
+app.get("/annule", (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Paiement annulé — Extracteur de Données</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #fafafa; color: #1a1a1a; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+  .card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 420px; }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  p { color: #555; font-size: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Paiement annulé</h1>
+    <p>Aucun montant n'a été débité. Vous pouvez fermer cet onglet et réessayer à tout moment
+    depuis l'extension "Extracteur de Données".</p>
+  </div>
+</body>
+</html>`);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
