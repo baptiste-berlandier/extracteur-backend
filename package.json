@@ -1,0 +1,16 @@
+{
+  "name": "extracteur-donnees-backend",
+  "version": "1.0.0",
+  "description": "Serveur relais : gère la clé API Claude et les abonnements Stripe pour l'extension Extracteur de Données",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "stripe": "^16.2.0",
+    "dotenv": "^16.4.5"
+  }
+}

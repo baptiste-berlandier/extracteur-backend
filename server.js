@@ -1,0 +1,198 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+const Stripe = require("stripe");
+
+const app = express();
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
+const DB_PATH = path.join(__dirname, "db.json");
+const FREE_LIMIT = parseInt(process.env.FREE_LIMIT || "5", 10);
+
+// ---------- Petite base de données locale (fichier JSON) ----------
+// Pour un vrai lancement à grande échelle, remplacer par une vraie base
+// (Postgres, MongoDB...). Suffisant pour démarrer et valider le concept.
+
+function readDb() {
+  if (!fs.existsSync(DB_PATH)) return { users: {} };
+  try {
+    return JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
+  } catch {
+    return { users: {} };
+  }
+}
+
+function writeDb(db) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+}
+
+function getUser(deviceId) {
+  const db = readDb();
+  if (!db.users[deviceId]) {
+    db.users[deviceId] = { usedCount: 0, subscribed: false, stripeCustomerId: null };
+    writeDb(db);
+  }
+  return db.users[deviceId];
+}
+
+function updateUser(deviceId, patch) {
+  const db = readDb();
+  db.users[deviceId] = { ...db.users[deviceId], ...patch };
+  writeDb(db);
+  return db.users[deviceId];
+}
+
+// ---------- Webhook Stripe (doit lire le corps brut, donc déclaré AVANT express.json()) ----------
+
+app.post(
+  "/api/stripe-webhook",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        req.headers["stripe-signature"],
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Signature webhook invalide :", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const deviceId = session.client_reference_id;
+      if (deviceId) {
+        updateUser(deviceId, { subscribed: true, stripeCustomerId: session.customer });
+        console.log(`Abonnement activé pour ${deviceId}`);
+      }
+    }
+
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object;
+      const db = readDb();
+      const entry = Object.entries(db.users).find(
+        ([, u]) => u.stripeCustomerId === subscription.customer
+      );
+      if (entry) {
+        updateUser(entry[0], { subscribed: false });
+        console.log(`Abonnement résilié pour ${entry[0]}`);
+      }
+    }
+
+    res.json({ received: true });
+  }
+);
+
+// ---------- Middleware standards (après le webhook) ----------
+
+app.use(cors());
+app.use(express.json({ limit: "2mb" }));
+
+// ---------- Statut d'un utilisateur ----------
+
+app.get("/api/status", (req, res) => {
+  const deviceId = req.query.deviceId;
+  if (!deviceId) return res.status(400).json({ error: "deviceId manquant" });
+
+  const user = getUser(deviceId);
+  res.json({
+    subscribed: user.subscribed,
+    freeUsesLeft: user.subscribed ? null : Math.max(0, FREE_LIMIT - user.usedCount),
+  });
+});
+
+// ---------- Extraction via l'IA (proxy vers l'API Claude) ----------
+
+app.post("/api/extract", async (req, res) => {
+  const { deviceId, pageText, query } = req.body || {};
+
+  if (!deviceId || !pageText || !query) {
+    return res.status(400).json({ error: "Paramètres manquants (deviceId, pageText, query)." });
+  }
+
+  const user = getUser(deviceId);
+
+  if (!user.subscribed && user.usedCount >= FREE_LIMIT) {
+    return res.status(402).json({
+      error: "limit_reached",
+      message: "Limite gratuite atteinte. Abonnez-vous pour continuer.",
+    });
+  }
+
+  const systemPrompt = `Tu es un extracteur de données. On te donne le texte brut d'une page web et une demande de l'utilisateur.
+Réponds UNIQUEMENT avec un tableau JSON de tableaux (lignes), où la première ligne contient les en-têtes de colonnes.
+Ne mets aucun texte avant ou après, aucun bloc markdown, uniquement le JSON brut.
+Si aucune donnée pertinente n'est trouvée, réponds avec [["Résultat"],["Aucune donnée trouvée"]].`;
+
+  const userMessage = `Demande de l'utilisateur : ${query}\n\nContenu de la page :\n${pageText.slice(0, 15000)}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Erreur API Claude (${response.status}) : ${errText.slice(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const textBlock = (data.content || []).find((b) => b.type === "text");
+    if (!textBlock) throw new Error("Réponse vide de l'API.");
+
+    const cleaned = textBlock.text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const rows = JSON.parse(cleaned);
+
+    if (!user.subscribed) {
+      updateUser(deviceId, { usedCount: user.usedCount + 1 });
+    }
+
+    res.json({ rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "extraction_failed", message: err.message });
+  }
+});
+
+// ---------- Création d'une session de paiement Stripe ----------
+
+app.post("/api/create-checkout-session", async (req, res) => {
+  const { deviceId } = req.body || {};
+  if (!deviceId) return res.status(400).json({ error: "deviceId manquant" });
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      client_reference_id: deviceId,
+      success_url: process.env.SUCCESS_URL,
+      cancel_url: process.env.CANCEL_URL,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "checkout_failed", message: err.message });
+  }
+});
+
+app.get("/", (req, res) => {
+  res.send("Serveur Extracteur de Données — OK");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
