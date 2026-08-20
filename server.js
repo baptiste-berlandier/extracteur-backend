@@ -189,6 +189,54 @@ app.get("/", (req, res) => {
   res.send("Serveur Extracteur de Données — OK");
 });
 
+app.get("/confidentialite", (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Politique de confidentialité — Extracteur de Données</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #fafafa; color: #1a1a1a; max-width: 640px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 17px; margin-top: 28px; }
+  p, li { font-size: 14px; color: #333; }
+</style>
+</head>
+<body>
+  <h1>Politique de confidentialité — Extracteur de Données</h1>
+  <p>Dernière mise à jour : 20 août 2026</p>
+
+  <h2>Ce que fait l'extension</h2>
+  <p>Extracteur de Données est une extension Chrome qui permet d'extraire des données depuis les pages
+  web que vous visitez (tableaux, listes, ou via une demande en langage naturel traitée par IA), et de les
+  exporter en CSV.</p>
+
+  <h2>Données collectées</h2>
+  <ul>
+    <li>Un identifiant anonyme généré localement sur votre appareil, utilisé uniquement pour compter les
+    extractions gratuites et gérer votre abonnement.</li>
+    <li>Le contenu texte d'une page web n'est envoyé à notre service que lorsque vous déclenchez
+    explicitement une extraction par IA en cliquant sur le bouton correspondant.</li>
+  </ul>
+
+  <h2>Ce que nous ne faisons pas</h2>
+  <ul>
+    <li>Nous ne collectons ni ne revendons aucune donnée personnelle identifiable.</li>
+    <li>Nous ne suivons pas votre navigation en dehors des extractions que vous déclenchez vous-même.</li>
+    <li>Nous ne stockons pas le contenu des pages extraites au-delà du temps nécessaire pour générer
+    votre export.</li>
+  </ul>
+
+  <h2>Paiements</h2>
+  <p>Les abonnements sont traités par Stripe. Nous n'avons jamais accès à vos informations bancaires ;
+  elles sont saisies directement sur la page sécurisée de Stripe.</p>
+
+  <h2>Contact</h2>
+  <p>Pour toute question concernant cette politique, vous pouvez nous contacter via la fiche de
+  l'extension sur le Chrome Web Store.</p>
+</body>
+</html>`);
+});
 app.get("/merci", (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="fr">
